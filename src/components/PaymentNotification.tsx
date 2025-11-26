@@ -42,7 +42,7 @@ export default function PaymentNotification({ daysUntilDue, onPaymentClick }: Pa
       className={`relative border-l-4 ${
         daysUntilDue <= 1 
           ? 'border-l-red-500 bg-red-50 dark:bg-red-900/80 dark:border-l-red-400' 
-          : 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/80 dark:border-l-yellow-400'
+          : 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900 dark:border-l-yellow-400'
       }`}
     >
       <AlertCircle className={`h-4 w-4 ${daysUntilDue <= 1 ? 'text-red-600 dark:text-red-300' : 'text-yellow-600 dark:text-yellow-300'}`} />
