@@ -97,10 +97,10 @@ function SidebarContent({
   });
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border">
       {/* Header with Logo and Collapse Button - Desktop Only */}
       {!isMobile && (
-        <div className={`flex items-center p-4 border-b border-gray-200 dark:border-gray-700 h-16 ${
+        <div className={`flex items-center p-4 border-b border-sidebar-border h-16 ${
           isCollapsed ? 'justify-center' : 'justify-between'
         }`}>
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
@@ -126,7 +126,7 @@ function SidebarContent({
 
       {/* Collapsed State - Expand Button */}
       {!isMobile && isCollapsed && (
-        <div className="flex flex-col items-center justify-center p-4 border-b border-gray-200 dark:border-gray-700 h-16">
+        <div className="flex flex-col items-center justify-center p-4 border-b border-sidebar-border h-16">
           <Button
             variant="ghost"
             size="sm"

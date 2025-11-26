@@ -33,6 +33,14 @@ export async function POST(request: NextRequest) {
     }
 
     const tenantId = generateTenantId();
+
+    const tenant = await db.tenant.create({
+      data: {
+        id: tenantId,
+        name: companyName,
+      },
+    });
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await db.user.create({

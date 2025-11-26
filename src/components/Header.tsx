@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
@@ -11,11 +12,10 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { LogOut, User, Settings, Sun, Moon } from 'lucide-react';
-import { useState } from 'react';
 
 export default function Header() {
-  const { user, tenant, updateTheme, logout } = useAuth();
-  const [currentTheme, setCurrentTheme] = useState('light');
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -39,29 +39,13 @@ export default function Header() {
       .slice(0, 2);
   };
 
-  const toggleTheme = async () => {
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    await updateTheme(newTheme);
-    setCurrentTheme(newTheme);
-  };
-
   const handleLogout = async () => {
     await logout();
     window.location.href = '/login';
   };
 
-  // Initialize theme from user data
-  useState(() => {
-    if (user?.theme) {
-      setCurrentTheme(user.theme);
-      if (user.theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      }
-    }
-  });
-
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 h-16">
+    <header className="bg-card border-b border-border px-4 h-16 sticky top-0 z-50">
       <div className="flex items-center justify-between h-full">
         <div className="flex items-center space-x-4">
           {/* Título removido - agora aparece no Sidebar */}
@@ -73,22 +57,23 @@ export default function Header() {
             variant="ghost"
             size="sm"
             onClick={toggleTheme}
-            className="h-8 w-8 p-0"
-            title={currentTheme === 'light' ? 'Mudar para tema escuro' : 'Mudar para tema claro'}
+            className="h-9 w-9 p-0 hover:bg-accent"
+            title={theme === 'light' ? 'Mudar para tema escuro' : 'Mudar para tema claro'}
           >
-            {currentTheme === 'light' ? (
-              <Moon className="h-4 w-4" />
+            {theme === 'light' ? (
+              <Moon className="h-[1.2rem] w-[1.2rem] transition-all" />
             ) : (
-              <Sun className="h-4 w-4" />
+              <Sun className="h-[1.2rem] w-[1.2rem] transition-all" />
             )}
+            <span className="sr-only">Alternar tema</span>
           </Button>
 
           {/* User Avatar with Logout */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-blue-600 text-white">
+              <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-accent">
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
                     {user?.name ? getInitials(user.name) : 'U'}
                   </AvatarFallback>
                 </Avatar>

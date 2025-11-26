@@ -53,7 +53,7 @@ function MainLayoutContent({ children }: MainLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <LoadingSpinner size="lg" text="Carregando sistema..." />
       </div>
     );
@@ -65,7 +65,7 @@ function MainLayoutContent({ children }: MainLayoutProps) {
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed }}>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-background">
         {/* Header */}
         <Header />
         
