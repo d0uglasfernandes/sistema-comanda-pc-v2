@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Eye, Coffee, Trash2, CheckCircle, XCircle, Receipt, Search } from 'lucide-react';
+import { Plus, Eye, Coffee, Trash2, CheckCircle, XCircle, Receipt, Search, Filter, DollarSign, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface OrderItem {
   id: string;
@@ -68,7 +69,7 @@ function ComandasContent() {
       const response = await fetch('/api/comandas', {
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setOrders(data);
@@ -87,7 +88,7 @@ function ComandasContent() {
       const response = await fetch('/api/produtos', {
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -297,7 +298,7 @@ function ComandasContent() {
                     placeholder="1"
                   />
                 </div>
-                
+
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="block text-sm font-medium">Itens</label>
@@ -306,7 +307,7 @@ function ComandasContent() {
                       Adicionar Produto
                     </Button>
                   </div>
-                  
+
                   {selectedProducts.map((item, index) => (
                     <div key={index} className="flex gap-2 mb-2">
                       <select
@@ -340,7 +341,7 @@ function ComandasContent() {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="flex gap-2 justify-end">
                   <Button
                     type="button"
@@ -366,21 +367,29 @@ function ComandasContent() {
       )}
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mb-8 flex flex-col sm:flex-row gap-4 bg-card/30 p-4 rounded-xl backdrop-blur-sm border border-border/50"
+      >
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
             type="text"
             placeholder="Filtrar por número da mesa..."
             value={filterTable}
             onChange={(e) => setFilterTable(e.target.value)}
-            className="pl-10"
+            className="pl-10 bg-background/50 border-border/50 focus:bg-background transition-colors"
           />
         </div>
         <div className="w-full sm:w-48">
           <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Status" />
+            <SelectTrigger className="bg-background/50 border-border/50">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <SelectValue placeholder="Status" />
+              </div>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Todas</SelectItem>
@@ -390,109 +399,124 @@ function ComandasContent() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </motion.div>
 
       {/* Orders Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {filteredOrders.map((order) => (
-          <Card key={order.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm font-medium">
-                      Mesa #{order.tableNumber}
-                    </span>
-                    {getStatusBadge(order.status)}
-                  </CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    {new Date(order.createdAt).toLocaleString('pt-BR')}
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-3">
-                {/* Order Items */}
-                <div className="space-y-2">
-                  {order.items.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span className="truncate flex-1">
-                        {item.quantity}x {item.product.name}
-                      </span>
-                      <span className="font-medium ml-2">
-                        R$ {(item.unitPrice * item.quantity / 100).toFixed(2)}
-                      </span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        <AnimatePresence mode="popLayout">
+          {filteredOrders.map((order, index) => (
+            <motion.div
+              key={order.id}
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2, delay: index * 0.05 }}
+            >
+              <Card className="glass-card glass-card-hover border-none h-full flex flex-col">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <span className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-sm font-bold">
+                          Mesa #{order.tableNumber}
+                        </span>
+                        {getStatusBadge(order.status)}
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-2 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(order.createdAt).toLocaleString('pt-BR')}
+                      </CardDescription>
                     </div>
-                  ))}
-                  {order.items.length > 3 && (
-                    <p className="text-xs text-gray-500 text-center">
-                      +{order.items.length - 3} outros itens
-                    </p>
-                  )}
-                </div>
-
-                {/* Total */}
-                <div className="border-t pt-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total</span>
-                    <span className="text-xl font-bold text-green-600">
-                      R$ {(order.totalInCents / 100).toFixed(2)}
-                    </span>
                   </div>
-                </div>
+                </CardHeader>
+                <CardContent className="pt-0 flex-1 flex flex-col">
+                  <div className="space-y-3 flex-1">
+                    {/* Order Items */}
+                    <div className="space-y-2 bg-background/30 p-3 rounded-lg">
+                      {order.items.slice(0, 3).map((item) => (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span className="truncate flex-1 text-muted-foreground">
+                            <span className="font-bold text-foreground">{item.quantity}x</span> {item.product.name}
+                          </span>
+                          <span className="font-medium ml-2">
+                            R$ {(item.unitPrice * item.quantity / 100).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                      {order.items.length > 3 && (
+                        <p className="text-xs text-muted-foreground text-center pt-1 border-t border-border/50">
+                          +{order.items.length - 3} outros itens
+                        </p>
+                      )}
+                      {order.items.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center italic">
+                          Nenhum item adicionado
+                        </p>
+                      )}
+                    </div>
 
-                {/* Actions */}
-                <div className="flex flex-col gap-2 mt-4">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openViewDialog(order)}
-                      className="flex-1"
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Ver
-                    </Button>
-                    {canEdit && order.status === 'OPEN' && (
+                    {/* Total */}
+                    <div className="pt-2 mt-auto">
+                      <div className="flex justify-between items-end">
+                        <span className="text-sm text-muted-foreground">Total</span>
+                        <span className="text-2xl font-bold text-primary">
+                          R$ {(order.totalInCents / 100).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="grid grid-cols-2 gap-2 mt-4">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openAddItemsDialog(order)}
-                        className="flex-1"
+                        onClick={() => openViewDialog(order)}
+                        className="w-full hover:bg-primary/10 hover:text-primary border-primary/20"
                       >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Adicionar
+                        <Eye className="w-4 h-4 mr-1" />
+                        Ver
                       </Button>
-                    )}
+                      {canEdit && order.status === 'OPEN' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openAddItemsDialog(order)}
+                          className="w-full hover:bg-primary/10 hover:text-primary border-primary/20"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add
+                        </Button>
+                      )}
+                      {canEdit && order.status === 'OPEN' && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleUpdateOrderStatus(order.id, 'CLOSED')}
+                          className="col-span-2 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Fechar Conta
+                        </Button>
+                      )}
+                      {canEdit && order.status === 'CLOSED' && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleUpdateOrderStatus(order.id, 'PAID')}
+                          className="col-span-2"
+                        >
+                          <DollarSign className="w-4 h-4 mr-1" />
+                          Confirmar Pagamento
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  {canEdit && order.status === 'OPEN' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUpdateOrderStatus(order.id, 'CLOSED')}
-                      className="w-full"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Fechar
-                    </Button>
-                  )}
-                  {canEdit && order.status === 'CLOSED' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleUpdateOrderStatus(order.id, 'PAID')}
-                      className="w-full"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Pagar
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       {filteredOrders.length === 0 && (
@@ -504,7 +528,7 @@ function ComandasContent() {
             {orders.length === 0 ? 'Nenhuma comanda encontrada' : 'Nenhuma comanda corresponde aos filtros'}
           </h3>
           <p className="text-gray-500 mb-6">
-            {orders.length === 0 
+            {orders.length === 0
               ? 'Comece criando sua primeira comanda no sistema.'
               : 'Tente ajustar os filtros ou limpar a busca.'
             }
@@ -572,13 +596,13 @@ function ComandasContent() {
                   Adicionar Produto
                 </Button>
               </div>
-              
+
               {addItemsProducts.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   Clique em "Adicionar Produto" para começar
                 </div>
               )}
-              
+
               {addItemsProducts.map((item, index) => (
                 <div key={index} className="flex gap-2 mb-2">
                   <select
@@ -612,7 +636,7 @@ function ComandasContent() {
                 </div>
               ))}
             </div>
-            
+
             <div className="flex gap-2 justify-end">
               <Button
                 type="button"

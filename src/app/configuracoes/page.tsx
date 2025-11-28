@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Settings } from 'lucide-react';
+import { Settings, Store, Save } from 'lucide-react';
+import { motion } from 'framer-motion';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 
 function TenantSettingsContent() {
@@ -90,45 +91,70 @@ function TenantSettingsContent() {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações do Estabelecimento</CardTitle>
-          <CardDescription>
-            Configure as informações do seu estabelecimento
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome do Estabelecimento</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                disabled={!isEditing}
-                required
-                placeholder="Ex: Bar do João"
-                className="w-full"
-              />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Card className="glass-card border-none max-w-2xl mx-auto">
+          <CardHeader className="border-b border-border/50 bg-muted/20">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <Store className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Informações do Estabelecimento</CardTitle>
+                <CardDescription>
+                  Configure as informações principais do seu negócio
+                </CardDescription>
+              </div>
             </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-base">Nome do Estabelecimento</Label>
+                <div className="relative">
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    disabled={!isEditing}
+                    required
+                    placeholder="Ex: Bar do João"
+                    className="w-full pl-10 h-12 text-lg bg-background/50 border-border/50 focus:bg-background transition-all"
+                  />
+                  <Store className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Este nome será exibido no cabeçalho e nos relatórios.
+                </p>
+              </div>
 
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditing(!isEditing)}
-              >
-                {isEditing ? 'Cancelar' : 'Editar'}
-              </Button>
-              {isEditing && (
-                <Button type="submit">
-                  {isLoading ? 'Salvando...' : 'Salvar'}
+              <div className="flex justify-end pt-4 border-t border-border/50">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="mr-2"
+                >
+                  {isEditing ? 'Cancelar' : 'Editar'}
                 </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                {isEditing && (
+                  <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                    {isLoading ? (
+                      <LoadingSpinner size="sm" className="mr-2" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    {isLoading ? 'Salvando...' : 'Salvar Alterações'}
+                  </Button>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </motion.div>
     </>
   );
 }

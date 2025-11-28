@@ -124,3 +124,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/50 backdrop-blur-xl border border-white/10 shadow-lg dark:border-white/5;
+  }
+  
+  .glass-card-hover {
+    @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:bg-card/60 hover:border-primary/20;
+  }
+
+  .premium-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60;
+  }
+}

@@ -6,18 +6,20 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useSidebar } from '@/components/MainLayout';
-import { 
-  Home, 
-  Package, 
-  Receipt, 
-  Users, 
-  Settings, 
-  LogOut, 
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Home,
+  Package,
+  Receipt,
+  Users,
+  Settings,
+  LogOut,
   Menu,
   BarChart3,
   DollarSign,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Coffee
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -31,41 +33,29 @@ const sidebarItems: SidebarItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
-    icon: <Home className="w-4 h-4" />,
+    icon: <Home className="w-5 h-5" />,
   },
   {
     label: 'Produtos',
     href: '/produtos',
-    icon: <Package className="w-4 h-4" />,
+    icon: <Package className="w-5 h-5" />,
     roles: ['ADMIN', 'CAIXA'],
   },
   {
     label: 'Comandas',
     href: '/comandas',
-    icon: <Receipt className="w-4 h-4" />,
+    icon: <Receipt className="w-5 h-5" />,
   },
-  // {
-  //   label: 'Relatórios',
-  //   href: '/relatorios',
-  //   icon: <BarChart3 className="w-4 h-4" />,
-  //   roles: ['ADMIN', 'CAIXA'],
-  // },
-  // {
-  //   label: 'Financeiro',
-  //   href: '/financeiro',
-  //   icon: <DollarSign className="w-4 h-4" />,
-  //   roles: ['ADMIN', 'CAIXA'],
-  // },
   {
     label: 'Usuários',
     href: '/usuarios',
-    icon: <Users className="w-4 h-4" />,
+    icon: <Users className="w-5 h-5" />,
     roles: ['ADMIN'],
   },
   {
     label: 'Configurações',
     href: '/configuracoes',
-    icon: <Settings className="w-4 h-4" />,
+    icon: <Settings className="w-5 h-5" />,
     roles: ['ADMIN'],
   },
 ];
@@ -75,9 +65,9 @@ interface SidebarContentProps {
   onClose?: () => void;
 }
 
-function SidebarContent({ 
-  isMobile = false, 
-  onClose 
+function SidebarContent({
+  isMobile = false,
+  onClose
 }: SidebarContentProps) {
   const { user, tenant } = useAuth();
   const router = useRouter();
@@ -97,18 +87,23 @@ function SidebarContent({
   });
 
   return (
-    <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border">
+    <div className="flex flex-col h-full bg-background/60 backdrop-blur-xl border-r border-border/50 shadow-sm">
       {/* Header with Logo and Collapse Button - Desktop Only */}
       {!isMobile && (
-        <div className={`flex items-center p-4 border-b border-sidebar-border h-16 ${
-          isCollapsed ? 'justify-center' : 'justify-between'
-        }`}>
+        <div className={`flex items-center p-4 h-20 transition-all duration-300 ${isCollapsed ? 'justify-center' : 'justify-between'
+          }`}>
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-            <div className="text-2xl">🍺</div>
+            <div className="bg-primary/10 p-2 rounded-xl">
+              <Coffee className="h-6 w-6 text-primary" />
+            </div>
             {!isCollapsed && (
-              <span className="font-bold text-lg truncate">
-                {tenant?.name || 'Bar Manager'}
-              </span>
+              <motion.span
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="font-bold text-lg truncate bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60"
+              >
+                {tenant?.name || 'ComandaSys'}
+              </motion.span>
             )}
           </div>
           {!isCollapsed && (
@@ -116,7 +111,7 @@ function SidebarContent({
               variant="ghost"
               size="sm"
               onClick={() => setIsCollapsed(true)}
-              className="h-8 w-8 p-0 flex-shrink-0"
+              className="h-8 w-8 p-0 flex-shrink-0 hover:bg-primary/10 hover:text-primary transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -126,12 +121,12 @@ function SidebarContent({
 
       {/* Collapsed State - Expand Button */}
       {!isMobile && isCollapsed && (
-        <div className="flex flex-col items-center justify-center p-4 border-b border-sidebar-border h-16">
+        <div className="flex flex-col items-center justify-center p-4 h-20">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsCollapsed(false)}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -139,24 +134,55 @@ function SidebarContent({
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 overflow-y-auto">
-        <ul className="space-y-2">
-          {filteredItems.map((item) => (
-            <li key={item.href}>
+      <nav className="flex-1 p-4 overflow-y-auto space-y-2">
+        {filteredItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <div key={item.href} className="relative group">
+              {isActive && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-primary/10 rounded-xl"
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
               <Button
-                variant={pathname === item.href ? "default" : "ghost"}
-                className={`w-full justify-start ${isCollapsed ? 'px-2' : ''}`}
+                variant="ghost"
+                className={`w-full justify-start relative z-10 h-12 rounded-xl transition-all duration-200 ${isActive
+                    ? 'text-primary font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                  } ${isCollapsed ? 'px-0 justify-center' : 'px-4'}`}
                 onClick={() => handleNavigation(item.href)}
               >
                 <div className="flex items-center">
-                  {item.icon}
-                  {!isCollapsed && <span className="ml-2">{item.label}</span>}
+                  <span className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                    {item.icon}
+                  </span>
+                  {!isCollapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="ml-3"
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
                 </div>
               </Button>
-            </li>
-          ))}
-        </ul>
+            </div>
+          );
+        })}
       </nav>
+
+      {/* Footer / User Info could go here */}
+      {!isCollapsed && !isMobile && (
+        <div className="p-4 m-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10">
+          <p className="text-xs text-muted-foreground text-center">
+            v2.0.0
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -180,11 +206,13 @@ export default function Sidebar() {
   // Desktop Sidebar
   if (!isMobile) {
     return (
-      <div className={`fixed left-0 top-0 h-full z-40 transition-all duration-300 ${
-        isCollapsed ? 'w-16' : 'w-64'
-      }`}>
+      <motion.div
+        className="fixed left-0 top-0 h-full z-40"
+        animate={{ width: isCollapsed ? 80 : 280 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
         <SidebarContent />
-      </div>
+      </motion.div>
     );
   }
 
@@ -194,13 +222,13 @@ export default function Sidebar() {
       <div className="md:hidden fixed top-4 left-4 z-50">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Menu className="w-4 h-4" />
+            <Button variant="outline" size="icon" className="bg-background/80 backdrop-blur-md border-primary/20 shadow-lg">
+              <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
-            <SidebarContent 
-              isMobile={true} 
+          <SheetContent side="left" className="p-0 w-72 border-r border-border/50">
+            <SidebarContent
+              isMobile={true}
               onClose={() => setIsOpen(false)}
             />
           </SheetContent>

@@ -9,8 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Eye, Coffee, Trash2 } from 'lucide-react';
+import { Plus, Eye, Coffee, Trash2, TrendingUp, DollarSign, Clock } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import { motion } from 'framer-motion';
 
 interface OrderItem {
   id: string;
@@ -62,7 +63,7 @@ function DashboardContent() {
       const response = await fetch('/api/comandas', {
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setOrders(data);
@@ -81,7 +82,7 @@ function DashboardContent() {
       const response = await fetch('/api/produtos', {
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -200,7 +201,7 @@ function DashboardContent() {
                   placeholder="1"
                 />
               </div>
-              
+
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-sm font-medium">Itens</label>
@@ -209,7 +210,7 @@ function DashboardContent() {
                     Adicionar Produto
                   </Button>
                 </div>
-                
+
                 {selectedProducts.map((item, index) => (
                   <div key={index} className="flex gap-2 mb-2">
                     <select
@@ -243,7 +244,7 @@ function DashboardContent() {
                   </div>
                 ))}
               </div>
-              
+
               <div className="flex gap-2 justify-end">
                 <Button
                   type="button"
@@ -268,97 +269,141 @@ function DashboardContent() {
       )}
 
       {/* Stats Cards */}
-      <div className={`grid gap-4 mb-6 ${
-        (user?.role === 'ADMIN' || user?.role === 'CAIXA') 
-          ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
+      <div className={`grid gap-4 mb-6 ${(user?.role === 'ADMIN' || user?.role === 'CAIXA')
+          ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
           : 'grid-cols-1 md:grid-cols-2'
-      }`}>
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Comandas Abertas</CardTitle>
-            <Coffee className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{openOrders.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {openOrders.length > 0 ? 'Mesas ativas no momento' : 'Nenhuma mesa ativa'}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Comandas</CardTitle>
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{orders.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Todas as comandas criadas
-            </p>
-          </CardContent>
-        </Card>
-        
-        {(user?.role === 'ADMIN' || user?.role === 'CAIXA') && (
-          <Card className="hover:shadow-md transition-shadow">
+        }`}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="glass-card glass-card-hover border-none overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-              <span className="text-xs text-muted-foreground">Pagas</span>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Comandas Abertas</CardTitle>
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Coffee className="h-4 w-4 text-blue-500" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">R$ {(totalRevenue / 100).toFixed(2)}</div>
+              <div className="text-2xl font-bold">{openOrders.length}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                Total já pago
+                {openOrders.length > 0 ? 'Mesas ativas no momento' : 'Nenhuma mesa ativa'}
               </p>
             </CardContent>
           </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <Card className="glass-card glass-card-hover border-none overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total de Comandas</CardTitle>
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <Eye className="h-4 w-4 text-purple-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{orders.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Todas as comandas criadas
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {(user?.role === 'ADMIN' || user?.role === 'CAIXA') && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Card className="glass-card glass-card-hover border-none overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Receita Total</CardTitle>
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">R$ {(totalRevenue / 100).toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total já pago
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
       </div>
 
       {/* Recent Orders */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Comandas Recentes</CardTitle>
-          <CardDescription>Últimas comandas criadas no sistema</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {orders.slice(0, 5).map((order) => (
-              <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm font-medium">
-                    Mesa #{order.tableNumber}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.3 }}
+      >
+        <Card className="glass-card border-none">
+          <CardHeader>
+            <CardTitle>Comandas Recentes</CardTitle>
+            <CardDescription>Últimas comandas criadas no sistema</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {orders.slice(0, 5).map((order, index) => (
+                <motion.div
+                  key={order.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + (index * 0.1) }}
+                  className="flex items-center justify-between p-4 rounded-xl bg-background/50 border border-border/50 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-primary/10 text-primary px-3 py-2 rounded-lg text-sm font-bold">
+                      #{order.tableNumber}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Mesa {order.tableNumber}</span>
+                        {getStatusBadge(order.status)}
+                      </div>
+                      <div className="flex items-center text-xs text-muted-foreground mt-1">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {new Date(order.createdAt).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
                   </div>
-                  {getStatusBadge(order.status)}
-                </div>
-                <div className="text-right">
-                  <div className="font-medium">R$ {(order.totalInCents / 100).toFixed(2)}</div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(order.createdAt).toLocaleString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                  <div className="text-right">
+                    <div className="font-bold text-primary">R$ {(order.totalInCents / 100).toFixed(2)}</div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {orders.length > 5 && (
-            <div className="text-center mt-4">
-              <Button
-                variant="outline"
-                onClick={() => router.push('/comandas')}
-                className="w-full sm:w-auto"
-              >
-                Ver Todas as Comandas
-              </Button>
+                </motion.div>
+              ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {orders.length > 5 && (
+              <div className="text-center mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/comandas')}
+                  className="w-full sm:w-auto hover:bg-primary hover:text-primary-foreground transition-all"
+                >
+                  Ver Todas as Comandas
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </>
   );
 }

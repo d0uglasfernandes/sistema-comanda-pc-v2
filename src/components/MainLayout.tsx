@@ -9,6 +9,7 @@ import Header from '@/components/Header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { useSubscription } from '@/hooks/useSubscription';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Context for sharing sidebar state
 const SidebarContext = createContext<{
@@ -16,7 +17,7 @@ const SidebarContext = createContext<{
   setIsCollapsed: (value: boolean) => void;
 }>({
   isCollapsed: false,
-  setIsCollapsed: () => {},
+  setIsCollapsed: () => { },
 });
 
 export const useSidebar = () => useContext(SidebarContext);
@@ -78,26 +79,43 @@ function MainLayoutContent({ children }: MainLayoutProps) {
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed }}>
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <Header />
-        
+      <div className="min-h-screen bg-background relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+          <div className="absolute top-[-20%] right-[-20%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
+          <div className="absolute bottom-[-20%] left-[-20%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
+        </div>
+
         {/* Sidebar */}
         <Sidebar />
 
-        {/* Main Content */}
-        <main className={`transition-all duration-300 ${
-          isMobile ? 'pt-16' : isCollapsed ? 'ml-16 pt-16' : 'ml-64 pt-16'
-        }`}>
-          <div className="p-4 lg:p-6">
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {children}
-          </div>
-        </main>
+        {/* Main Content Wrapper */}
+        <div className={`relative z-10 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isMobile ? 'pl-0' : isCollapsed ? 'pl-[80px]' : 'pl-[280px]'
+          }`}>
+          {/* Header */}
+          <Header />
+
+          {/* Page Content */}
+          <main className="flex-1 p-6 lg:p-8">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                {error && (
+                  <Alert variant="destructive" className="mb-6">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
       </div>
     </SidebarContext.Provider>
   );

@@ -35,7 +35,6 @@ export async function GET(
         email: true,
         name: true,
         role: true,
-        theme: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -79,7 +78,7 @@ export async function PUT(
       );
     }
 
-    const { email, name, password, role, theme } = await request.json();
+    const { email, name, password, role } = await request.json();
 
     const existingUser = await db.user.findFirst({
       where: {
@@ -100,7 +99,6 @@ export async function PUT(
     if (email) updateData.email = email;
     if (name) updateData.name = name;
     if (role) updateData.role = role;
-    if (theme) updateData.theme = theme;
     if (password) {
       updateData.passwordHash = await bcrypt.hash(password, 10);
     }
@@ -113,7 +111,6 @@ export async function PUT(
         email: true,
         name: true,
         role: true,
-        theme: true,
         createdAt: true,
         updatedAt: true,
       },
