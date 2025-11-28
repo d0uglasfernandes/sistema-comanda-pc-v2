@@ -1,417 +1,786 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Eye, Coffee, Trash2, TrendingUp, DollarSign, Clock } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  DollarSign,
+  Receipt,
+  TrendingUp,
+  Clock,
+  AlertCircle,
+  BarChart3,
+  PieChart,
+  Calendar,
+  Users,
+  Package,
+  Timer,
+  Target,
+  Activity,
+} from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart as RechartsPie,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-interface OrderItem {
-  id: string;
-  quantity: number;
-  unitPrice: number;
-  product: {
+interface DashboardStats {
+  period: {
+    type: string;
+    startDate: string;
+    endDate: string;
+  };
+  kpis: {
+    faturamento: number;
+    comandasAbertas: number;
+    ticketMedio: number;
+    totalComandas: number;
+    comandasFechadas: number;
+  };
+  charts: {
+    vendasPorHora: Array<{ hour: number; total: number; count: number }>;
+    faturamentoDiario: Array<{ date: string; total: number; count: number }>;
+    produtosMaisVendidos: Array<{
+      productId: string;
+      productName: string;
+      category: string;
+      totalQuantity: number;
+      totalRevenue: number;
+    }>;
+    vendasPorCategoria: Array<{
+      category: string;
+      totalQuantity: number;
+      totalRevenue: number;
+    }>;
+  };
+  comandasAbertas: Array<{
     id: string;
-    name: string;
-    priceInCents: number;
+    tableNumber: number;
+    totalInCents: number;
+    itemCount: number;
+    createdAt: string;
+    tempoAbertoMinutos: number;
+  }>;
+  comandasFechadas: Array<{
+    id: string;
+    tableNumber: number;
+    totalInCents: number;
+    paymentMethod: string | null;
+    itemCount: number;
+    createdAt: string;
+    closedAt: string | null;
+    tempoTotalMinutos: number;
+  }>;
+  metricas: {
+    tempoMedioMinutos: number;
+    ticketMaximo: number;
+    ticketMinimo: number;
+    itensMediosPorComanda: number;
+    horarioPico: {
+      hora: number;
+      faturamento: number;
+      comandas: number;
+    } | null;
   };
 }
 
-interface Order {
-  id: string;
-  tableNumber: number;
-  status: 'OPEN' | 'CLOSED' | 'PAID';
-  totalInCents: number;
-  items: OrderItem[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  priceInCents: number;
-}
+const COLORS = ['#8b5cf6', '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
 
 function DashboardContent() {
-  const { user } = useAuth();
-  const router = useRouter();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isNewOrderDialogOpen, setIsNewOrderDialogOpen] = useState(false);
-  const [newOrderTable, setNewOrderTable] = useState('');
-  const [selectedProducts, setSelectedProducts] = useState<{ productId: string; quantity: string }[]>([]);
+  const [period, setPeriod] = useState('today');
+
+  const fetchDashboardStats = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      if (!user) {
+        throw new Error('Não autenticado');
+      }
+
+      const response = await fetch(`/api/dashboard/stats?period=${period}`, {
+        credentials: 'include', // Importante: inclui cookies na requisição
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao buscar estatísticas');
+      }
+
+      const data = await response.json();
+      setStats(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (user) {
-      fetchOrders();
-      fetchProducts();
-    }
-  }, [user]);
-
-  async function fetchOrders() {
-    try {
-      const response = await fetch('/api/comandas', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(data);
-      } else {
-        setError('Failed to fetch orders');
-      }
-    } catch (error) {
-      setError('Network error');
-    } finally {
-      setIsDataLoading(false);
-    }
-  }
-
-  async function fetchProducts() {
-    try {
-      const response = await fetch('/api/produtos', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch products');
-    }
-  }
-
-  async function handleCreateOrder() {
-    if (!newOrderTable || selectedProducts.length === 0) {
+    // Aguarda o AuthContext terminar de carregar antes de buscar dados
+    if (isAuthLoading) {
       return;
     }
 
-    try {
-      const items = selectedProducts
-        .filter(p => p.productId && p.quantity)
-        .map(p => ({
-          productId: p.productId,
-          quantity: parseInt(p.quantity),
-        }));
-
-      const response = await fetch('/api/comandas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tableNumber: parseInt(newOrderTable),
-          items,
-        }),
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        await fetchOrders();
-        setIsNewOrderDialogOpen(false);
-        setNewOrderTable('');
-        setSelectedProducts([]);
-      } else {
-        const error = await response.json();
-        setError(error.error || 'Failed to create order');
-      }
-    } catch (error) {
-      setError('Network error');
+    // Se não houver usuário após o loading, redireciona para login
+    if (!user) {
+      window.location.href = '/login';
+      return;
     }
-  }
 
-  function addProductToOrder() {
-    setSelectedProducts([...selectedProducts, { productId: '', quantity: '1' }]);
-  }
+    fetchDashboardStats();
 
-  function updateProductInOrder(index: number, field: 'productId' | 'quantity', value: string) {
-    const updated = [...selectedProducts];
-    updated[index][field] = value;
-    setSelectedProducts(updated);
-  }
+    // Atualizar a cada 30 segundos
+    const interval = setInterval(fetchDashboardStats, 30000);
+    return () => clearInterval(interval);
+  }, [period, user, isAuthLoading]);
 
-  function removeProductFromOrder(index: number) {
-    setSelectedProducts(selectedProducts.filter((_, i) => i !== index));
-  }
+  const formatCurrency = (cents: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(cents / 100);
+  };
 
-  function getStatusBadge(status: string) {
-    switch (status) {
-      case 'OPEN':
-        return <Badge variant="default">Aberta</Badge>;
-      case 'CLOSED':
-        return <Badge variant="secondary">Fechada</Badge>;
-      case 'PAID':
-        return <Badge variant="outline">Paga</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}min`;
     }
-  }
+    return `${mins}min`;
+  };
 
-  const openOrders = orders.filter(order => order.status === 'OPEN');
-  const totalRevenue = orders
-    .filter(order => order.status === 'PAID')
-    .reduce((sum, order) => sum + order.totalInCents, 0);
+  const getAlertColor = (comanda: DashboardStats['comandasAbertas'][0]) => {
+    if (comanda.tempoAbertoMinutos > 180) return 'border-yellow-500 border-2';
+    if (comanda.itemCount === 0) return 'border-gray-400 border-2';
+    if (comanda.totalInCents > (stats?.kpis.ticketMedio || 0) * 1.5) return 'border-purple-500 border-2';
+    return '';
+  };
 
-  if (isDataLoading) {
+  if (isLoading && !stats) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="md" text="Carregando dados..." />
-      </div>
+      <MainLayout>
+        <div className="flex items-center justify-center h-screen">
+          <LoadingSpinner size="lg" />
+        </div>
+      </MainLayout>
     );
   }
 
-  return (
-    <>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
-        <Dialog open={isNewOrderDialogOpen} onOpenChange={setIsNewOrderDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Comanda
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Nova Comanda</DialogTitle>
-              <DialogDescription>
-                Crie uma nova comanda para uma mesa
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Número da Mesa</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={newOrderTable}
-                  onChange={(e) => setNewOrderTable(e.target.value)}
-                  className="w-full p-2 border rounded"
-                  placeholder="1"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium">Itens</label>
-                  <Button type="button" variant="outline" size="sm" onClick={addProductToOrder}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Adicionar Produto
-                  </Button>
-                </div>
-
-                {selectedProducts.map((item, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <select
-                      value={item.productId}
-                      onChange={(e) => updateProductInOrder(index, 'productId', e.target.value)}
-                      className="flex-1 p-2 border rounded"
-                    >
-                      <option value="">Selecione um produto</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name} - R$ {(product.priceInCents / 100).toFixed(2)}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => updateProductInOrder(index, 'quantity', e.target.value)}
-                      className="w-20 p-2 border rounded"
-                      placeholder="Qtd"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeProductFromOrder(index)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsNewOrderDialogOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreateOrder}>
-                  Criar Comanda
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 border border-red-200 bg-red-50 text-red-700 rounded">
-          {error}
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-screen">
+          <Card className="max-w-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="w-5 h-5" />
+                Erro
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>{error}</p>
+              <Button onClick={fetchDashboardStats} className="mt-4">
+                Tentar Novamente
+              </Button>
+            </CardContent>
+          </Card>
         </div>
-      )}
+      </MainLayout>
+    );
+  }
 
-      {/* Stats Cards */}
-      <div className={`grid gap-4 mb-6 ${(user?.role === 'ADMIN' || user?.role === 'CAIXA')
-          ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
-          : 'grid-cols-1 md:grid-cols-2'
-        }`}>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card className="glass-card glass-card-hover border-none overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Comandas Abertas</CardTitle>
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Coffee className="h-4 w-4 text-blue-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{openOrders.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {openOrders.length > 0 ? 'Mesas ativas no momento' : 'Nenhuma mesa ativa'}
+  if (!stats) return null;
+
+  return (
+    <MainLayout>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 md:p-6 lg:p-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+                Dashboard Analítico
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Visão completa do seu negócio em tempo real
               </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <Card className="glass-card glass-card-hover border-none overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total de Comandas</CardTitle>
-              <div className="p-2 bg-purple-500/10 rounded-lg">
-                <Eye className="h-4 w-4 text-purple-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{orders.length}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Todas as comandas criadas
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+            {/* Filtros de Período */}
+            <Tabs value={period} onValueChange={setPeriod} className="w-full md:w-auto">
+              <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full md:w-auto">
+                <TabsTrigger value="today">Hoje</TabsTrigger>
+                <TabsTrigger value="yesterday">Ontem</TabsTrigger>
+                <TabsTrigger value="week">Semana</TabsTrigger>
+                <TabsTrigger value="month">Mês</TabsTrigger>
+                <TabsTrigger value="year">Ano</TabsTrigger>
+                <TabsTrigger value="custom">Custom</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
 
-        {(user?.role === 'ADMIN' || user?.role === 'CAIXA') && (
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0 }}
+          >
+            <Card className="overflow-hidden relative group hover:shadow-xl transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Faturamento
+                </CardTitle>
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+              </CardHeader>
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  {formatCurrency(stats.kpis.faturamento)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {stats.kpis.comandasFechadas} comandas fechadas
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <Card className="overflow-hidden relative group hover:shadow-xl transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Comandas Abertas
+                </CardTitle>
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+              </CardHeader>
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  {stats.kpis.comandasAbertas}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Ativas no momento
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
           >
-            <Card className="glass-card glass-card-hover border-none overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Receita Total</CardTitle>
-                <div className="p-2 bg-green-500/10 rounded-lg">
-                  <DollarSign className="h-4 w-4 text-green-500" />
+            <Card className="overflow-hidden relative group hover:shadow-xl transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Ticket Médio
+                </CardTitle>
+                <div className="p-2 bg-purple-500/10 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">R$ {(totalRevenue / 100).toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total já pago
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                  {formatCurrency(stats.kpis.ticketMedio)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Por comanda fechada
                 </p>
               </CardContent>
             </Card>
           </motion.div>
-        )}
-      </div>
 
-      {/* Recent Orders */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-      >
-        <Card className="glass-card border-none">
-          <CardHeader>
-            <CardTitle>Comandas Recentes</CardTitle>
-            <CardDescription>Últimas comandas criadas no sistema</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {orders.slice(0, 5).map((order, index) => (
-                <motion.div
-                  key={order.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + (index * 0.1) }}
-                  className="flex items-center justify-between p-4 rounded-xl bg-background/50 border border-border/50 hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-primary/10 text-primary px-3 py-2 rounded-lg text-sm font-bold">
-                      #{order.tableNumber}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Mesa {order.tableNumber}</span>
-                        {getStatusBadge(order.status)}
-                      </div>
-                      <div className="flex items-center text-xs text-muted-foreground mt-1">
-                        <Clock className="w-3 h-3 mr-1" />
-                        {new Date(order.createdAt).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-primary">R$ {(order.totalInCents / 100).toFixed(2)}</div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            <Card className="overflow-hidden relative group hover:shadow-xl transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-orange-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total de Comandas
+                </CardTitle>
+                <div className="p-2 bg-orange-500/10 rounded-lg">
+                  <BarChart3 className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+              </CardHeader>
+              <CardContent className="relative z-10">
+                <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                  {stats.kpis.totalComandas}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  No período selecionado
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
 
-            {orders.length > 5 && (
-              <div className="text-center mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => router.push('/comandas')}
-                  className="w-full sm:w-auto hover:bg-primary hover:text-primary-foreground transition-all"
-                >
-                  Ver Todas as Comandas
-                </Button>
+        {/* Gráficos */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Vendas por Hora */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <Card className="hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-primary" />
+                  Vendas por Hora
+                </CardTitle>
+                <CardDescription>Movimento ao longo do dia</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={stats.charts.vendasPorHora}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="hour"
+                      tickFormatter={(hour) => `${hour}h`}
+                      className="text-xs"
+                    />
+                    <YAxis
+                      tickFormatter={(value) => formatCurrency(value)}
+                      className="text-xs"
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-popover text-popover-foreground rounded-xl border border-border shadow-xl p-3">
+                              <p className="font-medium mb-1">{label}:00</p>
+                              <p className="text-sm">
+                                {formatCurrency(Number(payload[0].value))}
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="total"
+                      stroke="#8b5cf6"
+                      strokeWidth={3}
+                      name="Faturamento"
+                      dot={{ fill: '#8b5cf6', r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Faturamento Diário */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <Card className="hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  Faturamento Diário
+                </CardTitle>
+                <CardDescription>Últimos dias</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={stats.charts.faturamentoDiario}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(date) => {
+                        try {
+                          return format(new Date(date), 'dd/MM', { locale: ptBR });
+                        } catch {
+                          return date;
+                        }
+                      }}
+                      className="text-xs"
+                    />
+                    <YAxis
+                      tickFormatter={(value) => formatCurrency(value)}
+                      className="text-xs"
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'transparent' }}
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          let formattedDate = label;
+                          try {
+                            formattedDate = format(new Date(label), "dd 'de' MMMM", { locale: ptBR });
+                          } catch { }
+
+                          return (
+                            <div className="bg-popover text-popover-foreground rounded-xl border border-border shadow-xl p-3">
+                              <p className="font-medium mb-1">{formattedDate}</p>
+                              <p className="text-sm">
+                                {formatCurrency(Number(payload[0].value))}
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="total"
+                      fill="#6366f1"
+                      radius={[8, 8, 0, 0]}
+                      name="Faturamento"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* Produtos Mais Vendidos e Categorias */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Produtos Mais Vendidos */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+          >
+            <Card className="hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5 text-primary" />
+                  Produtos Mais Vendidos
+                </CardTitle>
+                <CardDescription>Top 10 do período</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {stats.charts.produtosMaisVendidos.slice(0, 5).map((produto, index) => (
+                    <div key={produto.productId} className="flex items-center gap-4">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{produto.productName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {produto.totalQuantity} unidades • {formatCurrency(produto.totalRevenue)}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{produto.category}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Vendas por Categoria */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.7 }}
+          >
+            <Card className="hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PieChart className="w-5 h-5 text-primary" />
+                  Vendas por Categoria
+                </CardTitle>
+                <CardDescription>Distribuição de receita</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <RechartsPie>
+                    <Pie
+                      data={stats.charts.vendasPorCategoria}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ category, percent }) =>
+                        `${category} ${(percent * 100).toFixed(0)}%`
+                      }
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="totalRevenue"
+                      nameKey="category"
+                    >
+                      {stats.charts.vendasPorCategoria.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-popover text-popover-foreground rounded-xl border border-border shadow-xl p-3">
+                              <p className="font-medium mb-1">{data.category}</p>
+                              <p className="text-sm">{formatCurrency(data.totalRevenue)}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </RechartsPie>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* Métricas Avançadas */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.8 }}
+        >
+          <Card className="mb-8 hover:shadow-xl transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-primary" />
+                Métricas Avançadas
+              </CardTitle>
+              <CardDescription>Análise detalhada do desempenho</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Timer className="w-4 h-4" />
+                    <span className="text-sm">Tempo Médio</span>
+                  </div>
+                  <p className="text-2xl font-bold">
+                    {formatTime(stats.metricas.tempoMedioMinutos)}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <TrendingUp className="w-4 h-4" />
+                    <span className="text-sm">Ticket Máximo</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(stats.metricas.ticketMaximo)}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Package className="w-4 h-4" />
+                    <span className="text-sm">Itens/Comanda</span>
+                  </div>
+                  <p className="text-2xl font-bold">
+                    {stats.metricas.itensMediosPorComanda}
+                  </p>
+                </div>
+
+                {stats.metricas.horarioPico && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      <span className="text-sm">Horário de Pico</span>
+                    </div>
+                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      {stats.metricas.horarioPico.hora}h
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(stats.metricas.horarioPico.faturamento)}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-    </>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Comandas Abertas */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.9 }}
+        >
+          <Card className="mb-8 hover:shadow-xl transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-blue-600" />
+                Comandas Abertas
+                <Badge variant="default" className="ml-2">
+                  {stats.comandasAbertas.length}
+                </Badge>
+              </CardTitle>
+              <CardDescription>Acompanhamento em tempo real</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {stats.comandasAbertas.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhuma comanda aberta no momento
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {stats.comandasAbertas.map((comanda) => (
+                    <Card
+                      key={comanda.id}
+                      className={`hover:shadow-lg transition-all ${getAlertColor(comanda)}`}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">Mesa {comanda.tableNumber}</CardTitle>
+                          <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-300">
+                            Aberta
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Valor:</span>
+                            <span className="font-bold">{formatCurrency(comanda.totalInCents)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Itens:</span>
+                            <span className="font-medium">{comanda.itemCount}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Tempo:</span>
+                            <span className="font-medium">{formatTime(comanda.tempoAbertoMinutos)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Abertura:</span>
+                            <span className="text-xs">
+                              {format(new Date(comanda.createdAt), 'HH:mm', { locale: ptBR })}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Comandas Fechadas */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 1 }}
+        >
+          <Card className="hover:shadow-xl transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-green-600" />
+                Últimas Comandas Fechadas
+              </CardTitle>
+              <CardDescription>Histórico do período</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {stats.comandasFechadas.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhuma comanda fechada no período
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">
+                          Mesa
+                        </th>
+                        <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">
+                          Valor
+                        </th>
+                        <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">
+                          Itens
+                        </th>
+                        <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">
+                          Tempo
+                        </th>
+                        <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">
+                          Pagamento
+                        </th>
+                        <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">
+                          Fechamento
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.comandasFechadas.slice(0, 10).map((comanda) => (
+                        <tr key={comanda.id} className="border-b hover:bg-muted/50 transition-colors">
+                          <td className="py-3 px-4">
+                            <Badge variant="outline">Mesa {comanda.tableNumber}</Badge>
+                          </td>
+                          <td className="py-3 px-4 font-bold text-green-600 dark:text-green-400">
+                            {formatCurrency(comanda.totalInCents)}
+                          </td>
+                          <td className="py-3 px-4">{comanda.itemCount}</td>
+                          <td className="py-3 px-4 text-sm">
+                            {formatTime(comanda.tempoTotalMinutos)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge variant="secondary">{comanda.paymentMethod || 'N/A'}</Badge>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">
+                            {comanda.closedAt
+                              ? format(new Date(comanda.closedAt), 'dd/MM HH:mm', { locale: ptBR })
+                              : 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </MainLayout>
   );
 }
 
 export default function DashboardPage() {
-  return (
-    <MainLayout>
-      <DashboardContent />
-    </MainLayout>
-  );
+  return <DashboardContent />;
 }

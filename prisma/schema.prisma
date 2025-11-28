@@ -94,6 +94,7 @@ model Product {
   id           String       @id @default(cuid())
   name         String       
   priceInCents Int          
+  category     String       @default("Outros")
   tenantId     String       
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -104,6 +105,7 @@ model Product {
   items OrderItem[]
 
   @@index([tenantId])
+  @@index([category])
 }
 
 model OrderItem {
@@ -119,21 +121,25 @@ model OrderItem {
 }
 
 model Order {
-  id           String      @id @default(cuid())
-  tableNumber  Int         
-  status       OrderStatus @default(OPEN)
-  totalInCents Int         @default(0)
-  tenantId     String      
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id            String       @id @default(cuid())
+  tableNumber   Int         
+  status        OrderStatus  @default(OPEN)
+  totalInCents  Int          @default(0)
+  paymentMethod String?
+  closedAt      DateTime?
+  tenantId      String      
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   // Relacionamento com Tenant
-  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   items OrderItem[]
 
   @@index([tenantId])
   @@index([status])
+  @@index([createdAt])
+  @@index([closedAt])
 }
 
 enum Role {

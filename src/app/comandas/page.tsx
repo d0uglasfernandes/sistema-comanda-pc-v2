@@ -13,6 +13,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface OrderItem {
   id: string;
@@ -55,18 +61,23 @@ function ComandasContent() {
   const [isAddItemsDialogOpen, setIsAddItemsDialogOpen] = useState(false);
   const [addItemsProducts, setAddItemsProducts] = useState<{ productId: string; quantity: string }[]>([]);
   const [filterTable, setFilterTable] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'OPEN' | 'CLOSED' | 'PAID'>('ALL');
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'OPEN' | 'CLOSED' | 'PAID'>('OPEN');
+  const [filterDate, setFilterDate] = useState<Date | undefined>(new Date());
 
   const canEdit = ['ADMIN', 'CAIXA', 'GARCOM'].includes(user?.role || '');
 
   useEffect(() => {
     fetchOrders();
+  }, [filterDate]);
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 
   async function fetchOrders() {
     try {
-      const response = await fetch('/api/comandas', {
+      const dateQuery = filterDate ? `?date=${format(filterDate, 'yyyy-MM-dd')}` : '';
+      const response = await fetch(`/api/comandas${dateQuery}`, {
         credentials: 'include',
       });
 
@@ -382,6 +393,31 @@ function ComandasContent() {
             onChange={(e) => setFilterTable(e.target.value)}
             className="pl-10 bg-background/50 border-border/50 focus:bg-background transition-colors"
           />
+        </div>
+        <div className="w-full sm:w-auto">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full sm:w-[240px] justify-start text-left font-normal bg-background/50 border-border/50",
+                  !filterDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {filterDate ? format(filterDate, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={filterDate}
+                onSelect={setFilterDate}
+                initialFocus
+                locale={ptBR}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="w-full sm:w-48">
           <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>

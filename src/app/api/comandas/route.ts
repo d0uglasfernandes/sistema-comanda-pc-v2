@@ -5,7 +5,7 @@ import { getTenantFromRequest } from '@/lib/auth-utils';
 export async function GET(request: NextRequest) {
   try {
     const tenantId = await getTenantFromRequest(request);
-    
+
     if (!tenantId) {
       return NextResponse.json(
         { error: 'Tenant ID required' },
@@ -13,8 +13,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const dateParam = searchParams.get('date');
+
+    const whereClause: any = { tenantId };
+
+    if (dateParam) {
+      // Ajuste para fuso horário GMT-3 (Brasil)
+      // Data vem como YYYY-MM-DD (UTC 00:00)
+      // Queremos começar em 00:00 GMT-3 => 03:00 UTC
+      const offset = 3 * 60 * 60 * 1000;
+
+      const startDate = new Date(dateParam);
+      const startMs = startDate.getTime() + offset;
+
+      const endMs = startMs + (24 * 60 * 60 * 1000) - 1;
+
+      // Busca IDs usando query raw para comparar com timestamp numérico
+      const matchingIds = await db.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Order" 
+        WHERE "tenantId" = ${tenantId}
+        AND "createdAt" >= ${startMs}
+        AND "createdAt" <= ${endMs}
+      `;
+
+      const ids = matchingIds.map(r => r.id);
+      whereClause.id = { in: ids };
+    }
+
     const orders = await db.order.findMany({
-      where: { tenantId },
+      where: whereClause,
       include: {
         items: {
           include: {
@@ -38,7 +66,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const tenantId = await getTenantFromRequest(request);
-    
+
     if (!tenantId) {
       return NextResponse.json(
         { error: 'Tenant ID required' },
@@ -56,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     let totalInCents = 0;
-    const orderItems = [];
+    const orderItems: { productId: string; quantity: number; unitPrice: number }[] = [];
 
     for (const item of items) {
       const product = await db.product.findFirst({
