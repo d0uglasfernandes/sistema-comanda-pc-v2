@@ -2,28 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { updateSubscriptionPrice, calculateSubscriptionPrice } from '@/lib/stripe';
+import { withRole } from '@/middleware/withAuth';
 
-export async function GET(request: NextRequest) {
+// Handler GET protegido - apenas ADMIN pode listar usuários
+const getHandler = withRole(['ADMIN'], async (request, user) => {
   try {
-    const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role');
-    
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 400 }
-      );
-    }
-
-    if (userRole !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
-
     const users = await db.user.findMany({
-      where: { tenantId },
+      where: { tenantId: user.tenantId },
       select: {
         id: true,
         email: true,
@@ -43,27 +28,11 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+// Handler POST protegido - apenas ADMIN pode criar usuários
+const postHandler = withRole(['ADMIN'], async (request, user) => {
   try {
-    const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role');
-    
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 400 }
-      );
-    }
-
-    if (userRole !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
-
     const { email, name, password, role } = await request.json();
 
     if (!email || !name || !password || !role) {
@@ -76,7 +45,7 @@ export async function POST(request: NextRequest) {
     const existingUser = await db.user.findFirst({
       where: {
         email,
-        tenantId,
+        tenantId: user.tenantId,
       },
     });
 
@@ -89,13 +58,13 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await db.user.create({
+    const newUser = await db.user.create({
       data: {
         email,
         name,
         passwordHash,
         role,
-        tenantId,
+        tenantId: user.tenantId,
       },
       select: {
         id: true,
@@ -110,12 +79,12 @@ export async function POST(request: NextRequest) {
     // Atualiza o preço da assinatura se houver uma assinatura ativa
     try {
       const tenant = await db.tenant.findUnique({
-        where: { id: tenantId },
+        where: { id: user.tenantId },
       });
 
       if (tenant?.stripeSubscriptionId) {
         const totalUsers = await db.user.count({
-          where: { tenantId },
+          where: { tenantId: user.tenantId },
         });
 
         const newPriceInCents = calculateSubscriptionPrice(totalUsers);
@@ -138,7 +107,7 @@ export async function POST(request: NextRequest) {
       // Não falha a criação do usuário se a atualização da assinatura falhar
     }
 
-    return NextResponse.json(user, { status: 201 });
+    return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
     console.error('Create user error:', error);
     return NextResponse.json(
@@ -146,4 +115,8 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+// Export dos handlers
+export const GET = getHandler;
+export const POST = postHandler;

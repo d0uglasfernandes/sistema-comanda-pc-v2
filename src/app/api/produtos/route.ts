@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getTenantFromRequest, getUserFromRequest } from '@/lib/auth-utils';
+import { withAuth, withRole } from '@/middleware/withAuth';
 
-export async function GET(request: NextRequest) {
+// Handler GET protegido - todos os usuários autenticados podem listar produtos
+const getHandler = withAuth(async (request, user) => {
   try {
-    const tenantId = await getTenantFromRequest(request);
-    
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 400 }
-      );
-    }
-
     const products = await db.product.findMany({
-      where: { tenantId },
+      where: { tenantId: user.tenantId },
       orderBy: { name: 'asc' },
     });
 
@@ -26,26 +18,11 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+// Handler POST protegido - apenas ADMIN e CAIXA podem criar produtos
+const postHandler = withRole(['ADMIN', 'CAIXA'], async (request, user) => {
   try {
-    const user = await getUserFromRequest(request);
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    if (!['ADMIN', 'CAIXA'].includes(user.role)) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
-
     const { name, priceInCents } = await request.json();
 
     if (!name || priceInCents === undefined) {
@@ -71,4 +48,8 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+// Export dos handlers
+export const GET = getHandler;
+export const POST = postHandler;

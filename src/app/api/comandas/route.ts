@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getTenantFromRequest } from '@/lib/auth-utils';
+import { withAuth } from '@/middleware/withAuth';
 
-export async function GET(request: NextRequest) {
+// Handler GET protegido - todos os usuários autenticados podem listar comandas
+const getHandler = withAuth(async (request, user) => {
   try {
-    const tenantId = await getTenantFromRequest(request);
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 400 }
-      );
-    }
 
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get('date');
 
-    const whereClause: any = { tenantId };
+    const whereClause: any = { tenantId: user.tenantId };
 
     if (dateParam) {
       // Ajuste para fuso horário GMT-3 (Brasil)
@@ -32,7 +25,7 @@ export async function GET(request: NextRequest) {
       // Busca IDs usando query raw para comparar com timestamp numérico
       const matchingIds = await db.$queryRaw<{ id: string }[]>`
         SELECT id FROM "Order" 
-        WHERE "tenantId" = ${tenantId}
+        WHERE "tenantId" = ${user.tenantId}
         AND "createdAt" >= ${startMs}
         AND "createdAt" <= ${endMs}
       `;
@@ -61,18 +54,11 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+// Handler POST protegido - todos os usuários autenticados podem criar comandas
+const postHandler = withAuth(async (request, user) => {
   try {
-    const tenantId = await getTenantFromRequest(request);
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 400 }
-      );
-    }
 
     const { tableNumber, items } = await request.json();
 
@@ -90,7 +76,7 @@ export async function POST(request: NextRequest) {
       const product = await db.product.findFirst({
         where: {
           id: item.productId,
-          tenantId,
+          tenantId: user.tenantId,
         },
       });
 
@@ -114,7 +100,7 @@ export async function POST(request: NextRequest) {
     const order = await db.order.create({
       data: {
         tableNumber,
-        tenantId,
+        tenantId: user.tenantId,
         totalInCents,
         status: 'OPEN',
         items: {
@@ -138,4 +124,8 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+// Export dos handlers
+export const GET = getHandler;
+export const POST = postHandler;

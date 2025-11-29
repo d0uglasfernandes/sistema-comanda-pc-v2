@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUserFromRequest } from '@/lib/jwt';
-
-interface TokenPayload {
-  userId: string;
-  tenantId: string;
-  email: string;
-  role: string;
-}
+import { withAuth } from '@/middleware/withAuth';
 
 
 
@@ -49,15 +42,8 @@ function getDateRange(period: string): { startDate: Date; endDate: Date } {
   return { startDate, endDate };
 }
 
-export async function GET(request: NextRequest) {
+const getHandler = withAuth(async (request, user) => {
   try {
-    // Verificar autenticação
-    const user = await getUserFromRequest(request);
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
-
     const tenantId = user.tenantId;
     const searchParams = request.nextUrl.searchParams;
     const period = searchParams.get('period') || 'today';
@@ -305,4 +291,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+// Export do handler
+export const GET = getHandler;
